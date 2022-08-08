@@ -1,4 +1,4 @@
-fun main() {
+fun main(args: Array<String>) {
     val socketServer = SocketServer()
     socketServer.startServer(12345)
     ModelAggregation.createModel()

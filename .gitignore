@@ -2,3 +2,5 @@
 /target/
 /.idea
 /res/model
+/res/META-INF
+/out
