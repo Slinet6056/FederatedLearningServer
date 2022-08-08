@@ -13,6 +13,7 @@ class SocketServer {
     private val socketList = ArrayList<SocketThread>()
     private val ipAddressReceiveFile = ArrayList<String>()
     private val ipAddressSendFile = ArrayList<String>()
+    var autoMode = true
 
     fun startServer(port: Int) {
         if (thread != null) {
@@ -126,6 +127,11 @@ class SocketServer {
                     inputStream.close()
                     ModelAggregation.filePathList.add(filePath)
                     Utils.log("Received file from $ipAddress, socket closed")
+
+                    if (autoMode) {
+                        ModelAggregation.aggregation(3, 0.3)
+                        sendFile("res/model/trained_model.zip")
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

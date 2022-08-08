@@ -1,6 +1,7 @@
 fun main() {
     val socketServer = SocketServer()
     socketServer.startServer(12345)
+    ModelAggregation.createModel()
     ModelAggregation.startWebUI()
     while (true) {
         when (readln()) {

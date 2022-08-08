@@ -1,10 +1,16 @@
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration
+import org.deeplearning4j.nn.conf.layers.DenseLayer
+import org.deeplearning4j.nn.conf.layers.OutputLayer
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+import org.deeplearning4j.nn.weights.WeightInit
 import org.deeplearning4j.ui.api.UIServer
 import org.deeplearning4j.ui.model.stats.StatsListener
 import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage
 import org.deeplearning4j.util.ModelSerializer
+import org.nd4j.linalg.activations.Activation
 import org.nd4j.linalg.dataset.DataSet
 import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.lossfunctions.LossFunctions
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -52,16 +58,48 @@ object ModelAggregation {
         Utils.log("Web UI started on http://localhost:9000/")
     }
 
+    fun createModel() {
+        val inputLayer = DenseLayer.Builder()
+            .nIn(4)
+            .nOut(20)
+            .name("Input")
+            .build()
+
+        //隐藏层
+        val hiddenLayer = DenseLayer.Builder()
+            .nIn(20)
+            .nOut(20)
+            .name("Hidden")
+            .build()
+
+        //输出层
+        val outputLayer = OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+            .nIn(20)
+            .nOut(3)
+            .name("Output")
+            .activation(Activation.SOFTMAX) //标准的 softmax 激活函数
+            .build()
+
+        val nncBuilder = NeuralNetConfiguration.Builder()
+        val seed = 6L
+        nncBuilder.seed(seed)
+        nncBuilder.activation(Activation.TANH) //标准的双曲正切激活函数
+        nncBuilder.weightInit(WeightInit.XAVIER) //初始权重为均值 0, 方差为 2.0/(fanIn + fanOut)的高斯分布
+
+        val listBuilder = nncBuilder.list()
+        listBuilder.layer(0, inputLayer)
+        listBuilder.layer(1, hiddenLayer)
+        listBuilder.layer(2, outputLayer)
+
+        model = MultiLayerNetwork(listBuilder.build())
+        model.init()
+
+        Utils.log("Model created")
+    }
+
     fun aggregation(layer: Int, alpha: Double) {
         if (filePathList.isEmpty()) return
-        val originModel: MultiLayerNetwork
-        try {
-            val file = File("res/model/trained_model.zip")
-            originModel = ModelSerializer.restoreMultiLayerNetwork(file, true)
-        } catch (e: Exception) {
-            Utils.log(e.message.toString())
-            return
-        }
+        val originModel = model
         val filePathList = ArrayList(this.filePathList)
         this.filePathList.clear()
 
