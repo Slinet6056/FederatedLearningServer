@@ -1,0 +1,5 @@
+# 项目排除路径
+/target/
+/.idea
+/res/model
+!trained_model.zip
