@@ -22,13 +22,6 @@ object ModelAggregation {
     private var trainingData: DataSet
 
     init {
-        try {
-            val file = File("res/model/trained_model.zip")
-            model = ModelSerializer.restoreMultiLayerNetwork(file, true)
-        } catch (e: Exception) {
-            Utils.log(e.message.toString())
-        }
-
         val row = 150
         val col = 4
         val irisMatrix = Array(row) { DoubleArray(col) }
