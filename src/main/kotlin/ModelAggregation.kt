@@ -1,9 +1,56 @@
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+import org.deeplearning4j.ui.api.UIServer
+import org.deeplearning4j.ui.model.stats.StatsListener
+import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage
 import org.deeplearning4j.util.ModelSerializer
+import org.nd4j.linalg.dataset.DataSet
+import org.nd4j.linalg.factory.Nd4j
 import java.io.File
+import kotlin.concurrent.thread
 
 object ModelAggregation {
     val filePathList = ArrayList<String>()
+    private lateinit var model: MultiLayerNetwork
+    private val uiServer = UIServer.getInstance()
+    private val statsStorage = InMemoryStatsStorage()
+    private var trainingData: DataSet
+
+    init {
+        try {
+            val file = File("res/model/trained_model.zip")
+            model = ModelSerializer.restoreMultiLayerNetwork(file, true)
+        } catch (e: Exception) {
+            Utils.log(e.message.toString())
+        }
+
+        val row = 150
+        val col = 4
+        val irisMatrix = Array(row) { DoubleArray(col) }
+        var i = 0
+        for (r in 0 until row) {
+            for (c in 0 until col) {
+                irisMatrix[r][c] = TrainingData.irisData[i++]
+            }
+        }
+        val rowLabel = 150
+        val colLabel = 3
+        val twodimLabel = Array(rowLabel) { DoubleArray(colLabel) }
+        i = 0
+        for (r in 0 until rowLabel) {
+            for (c in 0 until colLabel) {
+                twodimLabel[r][c] = TrainingData.labelData[i++]
+            }
+        }
+        val trainingIn = Nd4j.create(irisMatrix)
+        val trainingOut = Nd4j.create(twodimLabel)
+        trainingData = DataSet(trainingIn, trainingOut)
+    }
+
+    fun startWebUI() {
+        model.setListeners(StatsListener(statsStorage, 1))
+        uiServer.attach(statsStorage)
+        Utils.log("Web UI started on http://localhost:9000/")
+    }
 
     fun aggregation(layer: Int, alpha: Double) {
         if (filePathList.isEmpty()) return
@@ -11,7 +58,6 @@ object ModelAggregation {
         try {
             val file = File("res/model/trained_model.zip")
             originModel = ModelSerializer.restoreMultiLayerNetwork(file, true)
-            file.delete()
         } catch (e: Exception) {
             Utils.log(e.message.toString())
             return
@@ -48,12 +94,27 @@ object ModelAggregation {
 
         Utils.log("Successfully aggregated ${filePathList.size} models")
 
-        for (filePath in filePathList) {
+        thread {
             try {
-                val file = File(filePath)
-                file.delete()
+                val paramTable = originModel.paramTable()
+                for (i in 0 until layer) {
+                    model.setParam(String.format("%d_W", i), paramTable[String.format("%d_W", i)])
+                    model.setParam(String.format("%d_b", i), paramTable[String.format("%d_b", i)])
+                }
+                model.fit(trainingData)
             } catch (e: Exception) {
                 Utils.log(e.message.toString())
+            }
+        }
+
+        thread {
+            for (filePath in filePathList) {
+                try {
+                    val file = File(filePath)
+                    file.delete()
+                } catch (e: Exception) {
+                    Utils.log(e.message.toString())
+                }
             }
         }
 
